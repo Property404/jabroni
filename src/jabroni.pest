@@ -1,0 +1,22 @@
+alpha = _{ 'a'..'z' | 'A'..'Z' }
+digit = _{ '0'..'9' }
+
+boolean_literal = { "true" | "false"}
+ident = @{ !(boolean_literal) ~ alpha ~ (alpha | digit)* }
+numeric_literal = @{ (digit) ~ (alpha | digit)* }
+
+assignment_operator = { "=" }
+comparison_operator = { "=="  | "!=" }
+sum_operator = { "+" | "-" }
+product_operator = { "*" | "/" }
+
+WHITESPACE = _{(" " | "\t" | "\n")+}
+
+kernel = _{ ident | numeric_literal | boolean_literal  | ("(" ~ expression ~ ")")}
+assignment = { ident ~ assignment_operator ~ comparison}
+comparison = { sum ~ (comparison_operator ~ sum)*}
+sum = { product ~ (sum_operator ~ product)*}
+product = { kernel ~ (product_operator ~ kernel)*}
+expression = {assignment|comparison}
+
+jabroni = _{ SOI ~ expression ~ EOI }
