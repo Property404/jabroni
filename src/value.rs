@@ -1,14 +1,22 @@
-use crate::errors::{JabroniError, JabroniResult};
+use crate::{
+    errors::{JabroniError, JabroniResult},
+    utils,
+};
 type Number = i32;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Number(Number),
     Boolean(bool),
+    String(String),
     Void,
 }
 
 impl Value {
+    pub fn from_string_literal(literal: &str) -> JabroniResult<Self> {
+        Ok(Value::String(utils::unquote(literal)?))
+    }
+
     pub fn from_numeric_literal(literal: &str) -> JabroniResult<Self> {
         Ok(Value::Number(
             literal

@@ -4,6 +4,9 @@ digit = _{ '0'..'9' }
 boolean_literal = { "true" | "false"}
 ident = @{ !(boolean_literal) ~ alpha ~ (alpha | digit)* }
 numeric_literal = @{ (digit) ~ (alpha | digit)* }
+single_string_literal = _{"'" ~ ("\\'" | (!("'") ~ ANY))* ~ "'"}
+double_string_literal = _{"\"" ~ ("\\\"" | (!("\"") ~ ANY))* ~ "\""}
+string_literal = { ( single_string_literal | double_string_literal) }
 
 assignment_operator = { "=" }
 comparison_operator = { "=="  | "!=" }
@@ -12,7 +15,7 @@ product_operator = { "*" | "/" }
 
 WHITESPACE = _{(" " | "\t" | "\n")+}
 
-kernel = _{ ident | numeric_literal | boolean_literal  | ("(" ~ expression ~ ")")}
+kernel = _{ ident | numeric_literal | boolean_literal | string_literal | ("(" ~ expression ~ ")")}
 assignment = { ident ~ assignment_operator ~ comparison}
 comparison = { sum ~ (comparison_operator ~ sum)*}
 sum = { product ~ (sum_operator ~ product)*}

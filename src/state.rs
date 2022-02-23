@@ -102,6 +102,7 @@ impl Jabroni {
     fn interpret_expression(&mut self, pair: Pair<Rule>) -> JabroniResult<Value> {
         match pair.as_rule() {
             Rule::ident => Ok(self.get_binding(pair.as_str())?.into_value()),
+            Rule::string_literal => return Value::from_string_literal(pair.as_str()),
             Rule::numeric_literal => return Value::from_numeric_literal(pair.as_str()),
             Rule::boolean_literal => {
                 return Value::from_boolean_literal(pair.as_str());
@@ -228,5 +229,37 @@ mod tests {
         // Update
         state.update_variable("foo", Value::Number(16)).unwrap();
         assert_eq!(state.run_expression("foo").unwrap(), Value::Number(16));
+    }
+
+    #[test]
+    fn strings() {
+        let mut state = Jabroni::new();
+        state
+            .define_variable("foo", Value::String("Hello World!".into()))
+            .unwrap();
+
+        state.run_expression("foo='Shut up!'").unwrap();
+        assert_eq!(
+            state.run_expression("foo").unwrap(),
+            Value::String("Shut up!".into())
+        );
+
+        state.run_expression("foo='\\''").unwrap();
+        assert_eq!(
+            state.run_expression("foo").unwrap(),
+            Value::String("\'".into())
+        );
+
+        state.run_expression("foo=\"Hello!\"").unwrap();
+        assert_eq!(
+            state.run_expression("foo").unwrap(),
+            Value::String("Hello!".into())
+        );
+
+        state.run_expression("foo='\\n\\t\\r'").unwrap();
+        assert_eq!(
+            state.run_expression("foo").unwrap(),
+            Value::String("\n\t\r".into())
+        );
     }
 }
