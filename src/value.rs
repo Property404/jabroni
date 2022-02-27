@@ -4,8 +4,30 @@ use crate::{
     utils,
 };
 use enum_as_inner::EnumAsInner;
+use std::{
+    fmt::{Debug, Error, Formatter},
+    rc::Rc,
+};
 
 type Number = i32;
+
+type SubroutineCallback = Rc<Box<dyn Fn(&mut [Value]) -> JabroniResult<Value>>>;
+#[derive(Clone)]
+pub struct Subroutine {
+    pub number_of_args: u8,
+    pub callback: SubroutineCallback,
+}
+
+impl Debug for Subroutine {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "[function]")
+    }
+}
+impl PartialEq for Subroutine {
+    fn eq(&self, other: &Self) -> bool {
+        self.number_of_args == other.number_of_args && Rc::ptr_eq(&self.callback, &other.callback)
+    }
+}
 
 #[derive(PartialEq, Debug, Clone, EnumAsInner)]
 pub enum Value {
@@ -13,6 +35,7 @@ pub enum Value {
     Boolean(bool),
     String(String),
     Object(BindingMap),
+    Subroutine(Subroutine),
     Void,
 }
 

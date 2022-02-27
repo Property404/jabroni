@@ -1,4 +1,4 @@
-alpha = _{ 'a'..'z' | 'A'..'Z' }
+alpha = _{ 'a'..'z' | 'A'..'Z' | "_" }
 digit = _{ '0'..'9' }
 
 boolean_literal = { "true" | "false"}
@@ -16,13 +16,33 @@ product_operator = { "*" | "/" }
 WHITESPACE = _{(" " | "\t" | "\n")+}
 
 kernel = _{ ident | numeric_literal | boolean_literal | string_literal | ("(" ~ expression ~ ")")}
-assignment = { (member_access|ident) ~ assignment_operator ~ (ternary|comparison|sum|product|member_access|kernel)}
-ternary = { (comparison|sum|product|member_access|kernel) ~ "?" ~ (comparison|sum|product|member_access|kernel) ~ ":" ~ (comparison|sum|product|member_access|kernel)}
-comparison = { (sum|product|member_access|kernel) ~ (comparison_operator ~ (sum|product|member_access|kernel))+}
-sum = { (product|member_access|kernel) ~ (sum_operator ~ (product|member_access|kernel))+}
-product = { kernel ~ (product_operator ~ kernel)+}
-member_access = { kernel ~ "." ~ kernel}
+assignment = { (member_access|ident) ~ assignment_operator ~ prec3}
+prec2 = _{(assignment | prec3) }
 
-expression = {assignment|ternary|comparison|sum|product|member_access|kernel}
+ternary = { prec9 ~ "?" ~ prec9 ~ ":" ~ prec9}
+prec3 = _{(ternary | prec9) }
+
+comparison = { prec12 ~ (comparison_operator ~ prec12)+}
+prec9 = _{(comparison | prec12) }
+
+sum = { prec13 ~ (sum_operator ~ prec13)+}
+prec12 = _{(sum | prec13) }
+
+product = { prec18 ~ (product_operator ~ prec18)+}
+prec13 = _{(product | prec18)}
+
+member_access = { kernel ~ "." ~ kernel}
+function_call = { (member_access|kernel) ~ "(" ~ (prec2 ~ ("," ~ prec2)*)? ~ ")" }
+prec18 = _{(function_call | member_access | kernel)}
+
+
+expression = {prec2}
+
+parameter_list =  {(ident ~ ("," ~ ident)*)?}
+block_statement = { "{" ~ (statement)* ~ "}" }
+function_statement = { "function"~ ident ~ "(" ~ parameter_list ~ ")" ~ block_statement }
+return_statement = {"return" ~ expression ~ ";"}
+statement = {function_statement | block_statement | return_statement | expression ~ ";" }
 
 jabroni_expression = _{ SOI ~ expression ~ EOI }
+jabroni_script = _{ SOI ~ (statement*) ~ EOI }

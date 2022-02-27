@@ -12,6 +12,9 @@ pub enum JabroniError {
     /// Binding doesn't exist
     #[error("ReferenceError: {0}")]
     Reference(String),
+    /// Bad arguments.
+    #[error("InvalidArgumentsError: {0}")]
+    InvalidArguments(String),
     /// Defining a variable or constant twice.
     #[error("DoubleDefinitionError: {0}")]
     DoubleDefinition(String),

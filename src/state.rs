@@ -1,9 +1,11 @@
 use crate::{
     binding::{Binding, BindingMap},
     errors::{JabroniError, JabroniResult},
+    value::Subroutine,
     Value,
 };
 use pest::{iterators::Pair, Parser};
+use std::rc::Rc;
 
 #[derive(Parser)]
 #[grammar = "jabroni.pest"]
@@ -51,6 +53,23 @@ impl Jabroni {
         self.interpret_expression(pairs.next().unwrap())
     }
 
+    pub fn run_script(&mut self, code: &str) -> JabroniResult<Value> {
+        let pairs = IdentParser::parse(Rule::jabroni_script, code)
+            .map_err(|e| JabroniError::Parse(format!("{}", e)))?;
+
+        let mut value = Value::Void;
+        for pair in pairs {
+            match pair.as_rule() {
+                Rule::statement => {
+                    value = self.interpret_statement(pair)?;
+                }
+                Rule::EOI => (),
+                _ => panic!("Unexpected rule found while running script"),
+            }
+        }
+        Ok(value)
+    }
+
     fn interpret_lvalue<'a>(
         pair: Pair<Rule>,
         bindings: &'a mut BindingMap,
@@ -59,7 +78,6 @@ impl Jabroni {
             Rule::ident => bindings.get_mut(pair.as_str()),
             Rule::kernel => Self::interpret_lvalue(pair.into_inner().next().unwrap(), bindings),
             Rule::member_access => {
-                println!("Access!");
                 let mut pair = pair.into_inner();
                 let object: &mut BindingMap = bindings
                     .get_mut(pair.next().unwrap().as_str())?
@@ -68,9 +86,10 @@ impl Jabroni {
                     .ok_or_else(|| JabroniError::Type("Not an object".into()))?;
                 Self::interpret_lvalue(pair.next().unwrap(), object)
             }
-            _ => Err(JabroniError::Parse(
-                "Cannot make out lvalue expression".into(),
-            )),
+            _ => Err(JabroniError::Parse(format!(
+                "Cannot make out lvalue expression: {}",
+                pair.as_str()
+            ))),
         }
     }
 
@@ -80,6 +99,23 @@ impl Jabroni {
             Rule::member_access => {
                 let lvalue = Self::interpret_lvalue(pair, &mut self.bindings)?;
                 Ok(lvalue.value().clone())
+            }
+
+            Rule::function_call => {
+                let mut pair = pair.into_inner();
+                let subroutine = Self::interpret_lvalue(pair.next().unwrap(), &mut self.bindings)?
+                    .value()
+                    .as_subroutine()
+                    .ok_or_else(|| JabroniError::Type("Not a function".into()))?
+                    .clone();
+
+                let mut args = Vec::new();
+                for arg in pair {
+                    args.push(self.interpret_expression(arg)?);
+                }
+
+                let callback = &subroutine.callback;
+                callback(&mut args)
             }
             Rule::ternary => {
                 let mut pair = pair.into_inner();
@@ -140,9 +176,70 @@ impl Jabroni {
                 Ok(value)
             }
             _ => {
-                unimplemented!("Unimplemented rule: {:?}", pair.as_rule());
+                unimplemented!("Unimplemented expression rule: {:?}", pair.as_rule());
             }
         }
+    }
+
+    fn interpret_statement(&mut self, pair: Pair<Rule>) -> JabroniResult<Value> {
+        match pair.as_rule() {
+            Rule::expression => {
+                self.interpret_expression(pair)?;
+            }
+            Rule::statement => return self.interpret_statement(pair.into_inner().next().unwrap()),
+            Rule::block_statement => {
+                let mut value = Value::Void;
+                for pair in pair.into_inner() {
+                    value = self.interpret_statement(pair)?;
+                }
+                return Ok(value);
+            }
+            Rule::function_statement => {
+                let mut pair = pair.into_inner();
+
+                let function_name = pair.next().unwrap();
+                let mut params = Vec::new();
+                for param in pair.next().unwrap().into_inner() {
+                    params.push(param.as_str().to_string());
+                }
+                let num_args = params.len();
+
+                let body = pair.next().unwrap().as_str().to_string();
+                let callback = move |args: &mut [Value]| -> JabroniResult<Value> {
+                    if args.len() != num_args {
+                        return Err(JabroniError::InvalidArguments(
+                            "Incorrect number of arguments".into(),
+                        ));
+                    }
+
+                    // Copy params/args (WARN: currently pass by value only)
+                    let mut substate = Jabroni::new();
+                    for (param, arg) in params.iter().zip(args.iter_mut()) {
+                        println!("Passing {param}");
+                        substate
+                            .bindings
+                            .set(param.into(), Binding::constant(arg.clone()));
+                    }
+
+                    substate.run_script(body.as_str())
+                };
+                let subroutine = Subroutine {
+                    number_of_args: num_args as u8,
+                    callback: Rc::new(Box::new(callback)),
+                };
+                self.bindings.set(
+                    function_name.as_str().into(),
+                    Binding::constant(Value::Subroutine(subroutine)),
+                );
+            }
+            Rule::return_statement => {
+                return self.interpret_expression(pair.into_inner().next().unwrap());
+            }
+            _ => {
+                unimplemented!("Unimplemented statement rule: {:?}", pair.as_rule());
+            }
+        }
+        Ok(Value::Void)
     }
 }
 
@@ -253,8 +350,6 @@ mod tests {
         let object = Value::Object(object);
         state.define_variable("foo", object.clone()).unwrap();
 
-        println!("{:?}", object);
-
         assert_eq!(state.run_expression("foo").unwrap(), object);
         assert_eq!(state.run_expression("foo.bar").unwrap(), Value::Number(8));
         assert_eq!(state.run_expression("foo.baz").unwrap(), Value::Number(42));
@@ -264,5 +359,71 @@ mod tests {
 
         assert_eq!(state.run_expression("foo.bar").unwrap(), Value::Number(0));
         assert_eq!(state.run_expression("foo.baz").unwrap(), Value::Number(42));
+    }
+
+    #[test]
+    fn object_method() {
+        fn bar(_: &mut [Value]) -> JabroniResult<Value> {
+            Ok(Value::Number(42))
+        }
+
+        let mut state = Jabroni::new();
+        let mut object = BindingMap::default();
+        object.set(
+            "bar".into(),
+            Binding::constant(Value::Subroutine(Subroutine {
+                number_of_args: 0,
+                callback: Rc::new(Box::new(bar)),
+            })),
+        );
+
+        let object = Value::Object(object);
+        state.define_variable("foo", object.clone()).unwrap();
+
+        assert_eq!(state.run_expression("foo.bar()").unwrap(), 42.into());
+    }
+
+    #[test]
+    fn call_rust_function() {
+        let mut state = Jabroni::new();
+        fn foo(_: &mut [Value]) -> JabroniResult<Value> {
+            Ok(Value::Number(42))
+        }
+        state
+            .define_constant(
+                "foo",
+                Value::Subroutine(Subroutine {
+                    number_of_args: 0,
+                    callback: Rc::new(Box::new(foo)),
+                }),
+            )
+            .unwrap();
+        assert_eq!(state.run_expression("foo()").unwrap(), 42.into());
+    }
+
+    #[test]
+    fn call_jabroni_function_no_args() {
+        let mut state = Jabroni::new();
+        state.run_script("function foo() {return 42;}").unwrap();
+        assert_eq!(state.run_expression("foo()").unwrap(), 42.into());
+    }
+
+    #[test]
+    fn call_jabroni_function_with_args() {
+        let mut state = Jabroni::new();
+        state
+            .run_script("function add_one(x) {return x+1;}")
+            .unwrap();
+        assert_eq!(state.run_expression("add_one(41)").unwrap(), 42.into());
+    }
+
+    #[test]
+    fn statements() {
+        let mut state = Jabroni::new();
+        state.define_variable("x", Value::Number(0)).unwrap();
+        state.define_variable("y", Value::Number(0)).unwrap();
+        state.run_script("x=0;y=1;x=2;\n").unwrap();
+        assert_eq!(state.run_expression("x").unwrap(), 2.into());
+        assert_eq!(state.run_expression("y").unwrap(), 1.into());
     }
 }
