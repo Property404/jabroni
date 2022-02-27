@@ -1,46 +1,22 @@
 use crate::{
+    binding::{Binding, BindingMap},
     errors::{JabroniError, JabroniResult},
     Value,
 };
-use std::collections::HashMap;
-
 use pest::{iterators::Pair, Parser};
 
 #[derive(Parser)]
 #[grammar = "jabroni.pest"]
 struct IdentParser;
 
-#[derive(Clone)]
-struct Binding {
-    mutable: bool,
-    value: Value,
-}
-
-impl Binding {
-    const fn mutable(&self) -> bool {
-        self.mutable
-    }
-
-    fn into_value(self) -> Value {
-        self.value
-    }
-}
-
+#[derive(Default)]
 pub struct Jabroni {
-    bindings: HashMap<String, Binding>,
-}
-
-impl Default for Jabroni {
-    fn default() -> Self {
-        Self::new()
-    }
+    bindings: BindingMap,
 }
 
 impl Jabroni {
     pub fn new() -> Self {
-        Self {
-            bindings: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn define_constant(&mut self, ident: &str, value: Value) -> JabroniResult {
@@ -52,35 +28,19 @@ impl Jabroni {
     }
 
     pub fn update_variable(&mut self, ident: &str, value: Value) -> JabroniResult {
-        let ident = ident.to_string();
-        let binding = self
-            .bindings
-            .get_mut(&ident)
-            .ok_or_else(|| JabroniError::Reference(format!("'{ident}' does not exist")))?;
-
-        if !binding.mutable() {
-            return Err(JabroniError::Type(format!(
-                "Cannot assign to '{ident}' because it is constant"
-            )));
-        }
-
-        if std::mem::discriminant(&binding.value) != std::mem::discriminant(&value) {
-            return Err(JabroniError::Type(ident));
-        }
-
-        binding.value = value;
+        self.bindings.get_mut(ident)?.set_value(value)?;
 
         Ok(())
     }
 
     fn define_binding(&mut self, ident: &str, value: Value, mutable: bool) -> JabroniResult {
         let ident = ident.to_string();
-        if self.bindings.get(&ident).is_some() {
+        if self.bindings.has(&ident) {
             return Err(JabroniError::DoubleDefinition(format!(
                 "Cannot define '{ident}' because it has already been defined"
             )));
         }
-        self.bindings.insert(ident, Binding { mutable, value });
+        self.bindings.set(ident, Binding::new(value, mutable));
         Ok(())
     }
 
@@ -91,17 +51,36 @@ impl Jabroni {
         self.interpret_expression(pairs.next().unwrap())
     }
 
-    fn get_binding(&self, name: &str) -> JabroniResult<Binding> {
-        let name = String::from(name);
-        self.bindings
-            .get(&name)
-            .ok_or(JabroniError::Reference(name))
-            .map(Clone::clone)
+    fn interpret_lvalue<'a>(
+        pair: Pair<Rule>,
+        bindings: &'a mut BindingMap,
+    ) -> JabroniResult<&'a mut Binding> {
+        match pair.as_rule() {
+            Rule::ident => bindings.get_mut(pair.as_str()),
+            Rule::kernel => Self::interpret_lvalue(pair.into_inner().next().unwrap(), bindings),
+            Rule::member_access => {
+                println!("Access!");
+                let mut pair = pair.into_inner();
+                let object: &mut BindingMap = bindings
+                    .get_mut(pair.next().unwrap().as_str())?
+                    .value_mut()
+                    .as_object_mut()
+                    .ok_or_else(|| JabroniError::Type("Not an object".into()))?;
+                Self::interpret_lvalue(pair.next().unwrap(), object)
+            }
+            _ => Err(JabroniError::Parse(
+                "Cannot make out lvalue expression".into(),
+            )),
+        }
     }
 
     fn interpret_expression(&mut self, pair: Pair<Rule>) -> JabroniResult<Value> {
         match pair.as_rule() {
-            Rule::ident => Ok(self.get_binding(pair.as_str())?.into_value()),
+            Rule::ident => Ok(self.bindings.get(pair.as_str())?.value().clone()),
+            Rule::member_access => {
+                let lvalue = Self::interpret_lvalue(pair, &mut self.bindings)?;
+                Ok(lvalue.value().clone())
+            }
             Rule::string_literal => return Value::from_string_literal(pair.as_str()),
             Rule::numeric_literal => return Value::from_numeric_literal(pair.as_str()),
             Rule::boolean_literal => {
@@ -113,12 +92,11 @@ impl Jabroni {
             Rule::assignment => {
                 let mut pairs = pair.into_inner();
                 let lhs = pairs.next().unwrap();
-
                 let operator = pairs.next().unwrap();
                 let operator = operator.as_str();
                 let operand = self.interpret_expression(pairs.next().unwrap())?;
                 if operator == "=" {
-                    self.update_variable(lhs.as_str(), operand)?;
+                    Self::interpret_lvalue(lhs, &mut self.bindings)?.set_value(operand)?;
                 } else {
                     unimplemented!("Unimplemented assignment operator: {}", operator);
                 }
@@ -261,5 +239,28 @@ mod tests {
             state.run_expression("foo").unwrap(),
             Value::String("\n\t\r".into())
         );
+    }
+
+    #[test]
+    fn objects() {
+        let mut state = Jabroni::new();
+
+        let mut object = BindingMap::default();
+        object.set("bar".into(), Binding::variable(Value::Number(8)));
+        object.set("baz".into(), Binding::constant(Value::Number(42)));
+        let object = Value::Object(object);
+        state.define_variable("foo", object.clone()).unwrap();
+
+        println!("{:?}", object);
+
+        assert_eq!(state.run_expression("foo").unwrap(), object);
+        assert_eq!(state.run_expression("foo.bar").unwrap(), Value::Number(8));
+        assert_eq!(state.run_expression("foo.baz").unwrap(), Value::Number(42));
+
+        state.run_expression("foo.bar=0").unwrap();
+        assert!(state.run_expression("foo.baz=1").is_err());
+
+        assert_eq!(state.run_expression("foo.bar").unwrap(), Value::Number(0));
+        assert_eq!(state.run_expression("foo.baz").unwrap(), Value::Number(42));
     }
 }

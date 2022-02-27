@@ -16,10 +16,12 @@ product_operator = { "*" | "/" }
 WHITESPACE = _{(" " | "\t" | "\n")+}
 
 kernel = _{ ident | numeric_literal | boolean_literal | string_literal | ("(" ~ expression ~ ")")}
-assignment = { ident ~ assignment_operator ~ comparison}
-comparison = { sum ~ (comparison_operator ~ sum)*}
-sum = { product ~ (sum_operator ~ product)*}
-product = { kernel ~ (product_operator ~ kernel)*}
-expression = {assignment|comparison}
+assignment = { (member_access|ident) ~ assignment_operator ~ (comparison|sum|product|member_access|kernel)}
+comparison = { (sum|product|member_access|kernel) ~ (comparison_operator ~ (sum|product|member_access|kernel))+}
+sum = { (product|member_access|kernel) ~ (sum_operator ~ (product|member_access|kernel))+}
+product = { kernel ~ (product_operator ~ kernel)+}
+member_access = { kernel ~ "." ~ kernel}
+
+expression = {assignment|comparison|sum|product|member_access|kernel}
 
 jabroni = _{ SOI ~ expression ~ EOI }

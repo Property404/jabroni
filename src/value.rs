@@ -1,14 +1,18 @@
 use crate::{
+    binding::BindingMap,
     errors::{JabroniError, JabroniResult},
     utils,
 };
+use enum_as_inner::EnumAsInner;
+
 type Number = i32;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Debug, Clone, EnumAsInner)]
 pub enum Value {
     Number(Number),
     Boolean(bool),
     String(String),
+    Object(BindingMap),
     Void,
 }
 
@@ -77,11 +81,17 @@ impl Value {
 
     pub fn compare(&mut self, value: Value) -> JabroniResult {
         self.assert_same_type(&value)?;
-        if self == &value {
-            *self = Value::Boolean(true);
-        } else {
-            *self = Value::Boolean(false);
-        }
+        let comparison = match self {
+            Value::Boolean(v) => v == value.as_boolean().unwrap(),
+            Value::Number(v) => v == value.as_number().unwrap(),
+            Value::String(v) => v == value.as_string().unwrap(),
+            _ => {
+                return Err(JabroniError::Type(
+                    "Cannot compare values of this type".into(),
+                ));
+            }
+        };
+        *self = Value::Boolean(comparison);
         Ok(())
     }
 }
