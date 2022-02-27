@@ -45,7 +45,7 @@ impl Jabroni {
     }
 
     pub fn run_expression(&mut self, code: &str) -> JabroniResult<Value> {
-        let mut pairs = IdentParser::parse(Rule::jabroni, code)
+        let mut pairs = IdentParser::parse(Rule::jabroni_expression, code)
             .map_err(|e| JabroniError::Parse(format!("{}", e)))?;
 
         self.interpret_expression(pairs.next().unwrap())
@@ -80,6 +80,21 @@ impl Jabroni {
             Rule::member_access => {
                 let lvalue = Self::interpret_lvalue(pair, &mut self.bindings)?;
                 Ok(lvalue.value().clone())
+            }
+            Rule::ternary => {
+                let mut pair = pair.into_inner();
+                let condition = self.interpret_expression(pair.next().unwrap())?;
+                match condition {
+                    Value::Boolean(condition) => {
+                        if !condition {
+                            pair.next().unwrap();
+                        }
+                        self.interpret_expression(pair.next().unwrap())
+                    }
+                    _ => Err(JabroniError::Type(
+                        "Ternary condition must be boolean".into(),
+                    )),
+                }
             }
             Rule::string_literal => return Value::from_string_literal(pair.as_str()),
             Rule::numeric_literal => return Value::from_numeric_literal(pair.as_str()),
@@ -138,29 +153,16 @@ mod tests {
     #[test]
     fn simple_expressions() {
         let mut state = Jabroni::new();
-        assert_eq!(state.run_expression("4").unwrap(), Value::Number(4));
-        assert_eq!(state.run_expression("2+2").unwrap(), Value::Number(4));
-        assert_eq!(state.run_expression("3*10-5").unwrap(), Value::Number(25));
-        assert_eq!(
-            state.run_expression("1+(10-7)*3").unwrap(),
-            Value::Number(10)
-        );
-        assert_eq!(
-            state.run_expression("2+2==4").unwrap(),
-            Value::Boolean(true)
-        );
-        assert_eq!(
-            state.run_expression("2+2==5").unwrap(),
-            Value::Boolean(false)
-        );
-        assert_eq!(
-            state.run_expression("2+2==4==false").unwrap(),
-            Value::Boolean(false)
-        );
-        assert_eq!(
-            state.run_expression("true==true").unwrap(),
-            Value::Boolean(true)
-        );
+        assert_eq!(state.run_expression("4").unwrap(), 4.into());
+        assert_eq!(state.run_expression("2+2").unwrap(), 4.into());
+        assert_eq!(state.run_expression("3*10-5").unwrap(), 25.into());
+        assert_eq!(state.run_expression("1+(10-7)*3").unwrap(), 10.into());
+        assert_eq!(state.run_expression("2+2==4").unwrap(), true.into());
+        assert_eq!(state.run_expression("2+2==5").unwrap(), false.into());
+        assert_eq!(state.run_expression("2+2==4==false").unwrap(), false.into());
+        assert_eq!(state.run_expression("true==true").unwrap(), true.into());
+        assert_eq!(state.run_expression("1==1?100:200").unwrap(), 100.into());
+        assert_eq!(state.run_expression("1==2?100:200").unwrap(), 200.into());
     }
 
     #[test]

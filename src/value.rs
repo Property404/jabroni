@@ -95,3 +95,15 @@ impl Value {
         Ok(())
     }
 }
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Value {
+        Value::Boolean(value)
+    }
+}
+
+impl From<Number> for Value {
+    fn from(value: Number) -> Value {
+        Value::Number(value)
+    }
+}
