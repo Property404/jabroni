@@ -402,19 +402,24 @@ mod tests {
     }
 
     #[test]
-    fn call_jabroni_function_no_args() {
+    fn call_jabroni_function() {
         let mut state = Jabroni::new();
+
         state.run_script("function foo() {return 42;}").unwrap();
         assert_eq!(state.run_expression("foo()").unwrap(), 42.into());
-    }
 
-    #[test]
-    fn call_jabroni_function_with_args() {
-        let mut state = Jabroni::new();
         state
             .run_script("function add_one(x) {return x+1;}")
             .unwrap();
         assert_eq!(state.run_expression("add_one(41)").unwrap(), 42.into());
+
+        state
+            .run_script("function add_together(x, y) {return x+y;}")
+            .unwrap();
+        assert_eq!(
+            state.run_expression("add_together(9,10)").unwrap(),
+            19.into()
+        );
     }
 
     #[test]
