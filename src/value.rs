@@ -5,7 +5,7 @@ use crate::{
 };
 use enum_as_inner::EnumAsInner;
 use std::{
-    fmt::{Debug, Error, Formatter},
+    fmt::{Debug, Display, Formatter},
     rc::Rc,
 };
 
@@ -19,7 +19,7 @@ pub struct Subroutine {
 }
 
 impl Debug for Subroutine {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "[function]")
     }
 }
@@ -128,5 +128,19 @@ impl From<bool> for Value {
 impl From<Number> for Value {
     fn from(value: Number) -> Value {
         Value::Number(value)
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Value::Number(value) => write!(f, "{}", value),
+            Value::Boolean(value) => write!(f, "{}", value),
+            Value::String(value) => write!(f, "{}", value),
+            Value::Void => write!(f, "null"),
+            // These aren't consistent with JavaScript
+            Value::Object(_) => write!(f, "[function]"),
+            Value::Subroutine(_) => write!(f, "[object]"),
+        }
     }
 }
