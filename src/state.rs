@@ -37,7 +37,7 @@ impl Jabroni {
 
     fn define_binding(&mut self, ident: &str, value: Value, mutable: bool) -> JabroniResult {
         let ident = ident.to_string();
-        if self.bindings.has(&ident) {
+        if self.bindings.has_on_top(&ident) {
             return Err(JabroniError::DoubleDefinition(format!(
                 "Cannot define '{ident}' because it has already been defined"
             )));
@@ -214,6 +214,8 @@ impl Jabroni {
                 let num_args = params.len();
 
                 let body = pair.next().unwrap().as_str().to_string();
+                let mut bindings = self.bindings.clone();
+                bindings.push();
                 let callback = move |args: &mut [Value]| -> JabroniResult<Value> {
                     if args.len() != num_args {
                         return Err(JabroniError::InvalidArguments(
@@ -221,8 +223,10 @@ impl Jabroni {
                         ));
                     }
 
+                    let mut substate = Jabroni {
+                        bindings: bindings.clone(),
+                    };
                     // Copy params/args (WARN: currently pass by value only)
-                    let mut substate = Jabroni::new();
                     for (param, arg) in params.iter().zip(args.iter_mut()) {
                         println!("Passing {param}");
                         substate
@@ -376,7 +380,6 @@ mod tests {
         let object = Value::Object(object);
         state.define_variable("foo", object.clone()).unwrap();
 
-        assert_eq!(state.run_expression("foo").unwrap(), object);
         assert_eq!(state.run_expression("foo.bar").unwrap(), Value::Number(8));
         assert_eq!(state.run_expression("foo.baz").unwrap(), Value::Number(42));
 
@@ -481,7 +484,6 @@ mod tests {
         assert!(state.run_expression("z").is_err());
         assert_eq!(state.run_expression("inner()").unwrap(), 4.into());
 
-        /*
         // Make sure we can shadow
         let mut state = Jabroni::new();
         state
@@ -497,6 +499,5 @@ mod tests {
             )
             .unwrap();
         assert_eq!(state.run_expression("inner()").unwrap(), 12.into());
-        */
     }
 }
