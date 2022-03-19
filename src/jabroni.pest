@@ -1,8 +1,9 @@
 alpha = _{ 'a'..'z' | 'A'..'Z' | "_" }
 digit = _{ '0'..'9' }
 
+null_literal = { "null" }
 boolean_literal = { "true" | "false"}
-ident = @{ !(boolean_literal) ~ alpha ~ (alpha | digit)* }
+ident = @{ !(boolean_literal|null_literal) ~ alpha ~ (alpha | digit)* }
 numeric_literal = @{ (digit) ~ (alpha | digit)* }
 single_string_literal = _{"'" ~ ("\\'" | (!("'") ~ ANY))* ~ "'"}
 double_string_literal = _{"\"" ~ ("\\\"" | (!("\"") ~ ANY))* ~ "\""}
@@ -15,7 +16,7 @@ product_operator = { "*" | "/" }
 
 WHITESPACE = _{(" " | "\t" | "\n")+}
 
-kernel = _{ ident | numeric_literal | boolean_literal | string_literal | ("(" ~ expression ~ ")")}
+kernel = _{ ident | numeric_literal | null_literal | boolean_literal | string_literal | ("(" ~ expression ~ ")")}
 assignment = { (member_access|ident) ~ assignment_operator ~ prec3}
 prec2 = _{(assignment | prec3) }
 
