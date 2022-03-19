@@ -244,6 +244,18 @@ impl Jabroni {
             Rule::return_statement => {
                 return self.interpret_expression(pair.into_inner().next().unwrap());
             }
+            Rule::declaration_statement => {
+                let mut pair = pair.into_inner();
+                let kind = pair.next().unwrap().as_str();
+                let ident = pair.next().unwrap().as_str();
+                let expression = pair.next().unwrap();
+                let value = self.interpret_expression(expression)?;
+                if kind == "const" {
+                    self.define_constant(ident, value)?;
+                } else {
+                    self.define_variable(ident, value)?;
+                }
+            }
             _ => {
                 unimplemented!("Unimplemented statement rule: {:?}", pair.as_rule());
             }
@@ -444,5 +456,47 @@ mod tests {
         state.run_script("x=0;y=1;x=2;\n").unwrap();
         assert_eq!(state.run_expression("x").unwrap(), 2.into());
         assert_eq!(state.run_expression("y").unwrap(), 1.into());
+    }
+
+    #[test]
+    fn declarations() {
+        let mut state = Jabroni::new();
+        state.run_script("const x=4;").unwrap();
+        assert_eq!(state.run_expression("x").unwrap(), 4.into());
+        state.run_script("let y = 0;y=3;").unwrap();
+        assert_eq!(state.run_expression("y").unwrap(), 3.into());
+
+        // Make sure functions don't leak names
+        let mut state = Jabroni::new();
+        state
+            .run_script(
+                "\
+            function inner() {
+                const z = 4;
+                return 4;
+            }
+        ",
+            )
+            .unwrap();
+        assert!(state.run_expression("z").is_err());
+        assert_eq!(state.run_expression("inner()").unwrap(), 4.into());
+
+        /*
+        // Make sure we can shadow
+        let mut state = Jabroni::new();
+        state
+            .run_script(
+                "\
+            const a = 3;
+            const b = 7;
+            function inner() {
+                const b = 9;
+                return a + b;
+            }
+        ",
+            )
+            .unwrap();
+        assert_eq!(state.run_expression("inner()").unwrap(), 12.into());
+        */
     }
 }
