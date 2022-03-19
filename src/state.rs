@@ -228,7 +228,6 @@ impl Jabroni {
                     };
                     // Copy params/args (WARN: currently pass by value only)
                     for (param, arg) in params.iter().zip(args.iter_mut()) {
-                        println!("Passing {param}");
                         substate
                             .bindings
                             .set(param.into(), Binding::constant(arg.clone()));
