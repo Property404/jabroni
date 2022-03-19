@@ -102,6 +102,16 @@ impl Value {
         Ok(())
     }
 
+    pub fn inverse(&mut self) -> JabroniResult {
+        match self {
+            Self::Boolean(boolean) => *self = Self::Boolean(!*boolean),
+            _ => {
+                return Err(JabroniError::Type("Cannot inverse a non-boolean".into()));
+            }
+        }
+        Ok(())
+    }
+
     pub fn compare(&mut self, value: Value, allow_type_diff: bool) -> JabroniResult {
         if std::mem::discriminant(self) != std::mem::discriminant(&value) {
             *self = false.into();

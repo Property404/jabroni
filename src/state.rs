@@ -164,8 +164,14 @@ impl Jabroni {
                     let operand = self.interpret_expression(pairs.next().unwrap())?;
                     if operator == "==" {
                         value.compare(operand, false)?;
+                    } else if operator == "!=" {
+                        value.compare(operand, false)?;
+                        value.inverse()?;
                     } else if operator == "===" {
                         value.compare(operand, true)?;
+                    } else if operator == "!==" {
+                        value.compare(operand, true)?;
+                        value.inverse()?;
                     } else if operator == "+" {
                         value.add(operand)?;
                     } else if operator == "-" {
@@ -258,11 +264,16 @@ mod tests {
         assert_eq!(state.run_expression("3*10-5").unwrap(), 25.into());
         assert_eq!(state.run_expression("1+(10-7)*3").unwrap(), 10.into());
         assert_eq!(state.run_expression("2+2==4").unwrap(), true.into());
+        assert_eq!(state.run_expression("2+2!=4").unwrap(), false.into());
         assert_eq!(state.run_expression("2+2==5").unwrap(), false.into());
+        assert_eq!(state.run_expression("2+2!=5").unwrap(), true.into());
         assert_eq!(state.run_expression("2+2==4==false").unwrap(), false.into());
         assert_eq!(state.run_expression("true==true").unwrap(), true.into());
         assert_eq!(state.run_expression("1==1?100:200").unwrap(), 100.into());
         assert_eq!(state.run_expression("1==2?100:200").unwrap(), 200.into());
+        assert_eq!(state.run_expression("8===8").unwrap(), true.into());
+        assert_eq!(state.run_expression("null===null").unwrap(), true.into());
+        assert_eq!(state.run_expression("null===0").unwrap(), false.into());
     }
 
     #[test]
