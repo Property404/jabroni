@@ -57,7 +57,7 @@ impl Jabroni {
         let pairs = IdentParser::parse(Rule::jabroni_script, code)
             .map_err(|e| JabroniError::Parse(format!("{}", e)))?;
 
-        let mut value = Value::Void;
+        let mut value = Value::Null;
         for pair in pairs {
             match pair.as_rule() {
                 Rule::statement => {
@@ -153,7 +153,7 @@ impl Jabroni {
                 }
                 // Assignment return void because we don't want to accidentally assign while trying
                 // to compare
-                Ok(Value::Void)
+                Ok(Value::Null)
             }
             Rule::comparison | Rule::sum | Rule::product => {
                 let mut pairs = pair.into_inner();
@@ -188,7 +188,7 @@ impl Jabroni {
             }
             Rule::statement => return self.interpret_statement(pair.into_inner().next().unwrap()),
             Rule::block_statement => {
-                let mut value = Value::Void;
+                let mut value = Value::Null;
                 for pair in pair.into_inner() {
                     value = self.interpret_statement(pair)?;
                 }
@@ -239,7 +239,7 @@ impl Jabroni {
                 unimplemented!("Unimplemented statement rule: {:?}", pair.as_rule());
             }
         }
-        Ok(Value::Void)
+        Ok(Value::Null)
     }
 }
 

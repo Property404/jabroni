@@ -36,7 +36,7 @@ pub enum Value {
     String(String),
     Object(BindingMap),
     Subroutine(Subroutine),
-    Void,
+    Null,
 }
 
 impl Value {
@@ -137,7 +137,7 @@ impl Display for Value {
             Value::Number(value) => write!(f, "{}", value),
             Value::Boolean(value) => write!(f, "{}", value),
             Value::String(value) => write!(f, "{}", value),
-            Value::Void => write!(f, "null"),
+            Value::Null => write!(f, "null"),
             // These aren't consistent with JavaScript
             Value::Object(_) => write!(f, "[function]"),
             Value::Subroutine(_) => write!(f, "[object]"),
