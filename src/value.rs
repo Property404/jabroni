@@ -102,12 +102,30 @@ impl Value {
         Ok(())
     }
 
-    pub fn compare(&mut self, value: Value) -> JabroniResult {
-        self.assert_same_type(&value)?;
+    pub fn compare(&mut self, value: Value, allow_type_diff: bool) -> JabroniResult {
+        if std::mem::discriminant(self) != std::mem::discriminant(&value) {
+            *self = false.into();
+            if allow_type_diff {
+                return Ok(());
+            } else {
+                return Err(JabroniError::Type(
+                    "Cannot compare between values of different types. Try using '===' or '!=='"
+                        .into(),
+                ));
+            }
+        }
+
+        if matches!(value, Value::Null) && !allow_type_diff {
+            return Err(JabroniError::Type(
+                "Can't compare null values. Use '===' or '!=='".into(),
+            ));
+        }
+
         let comparison = match self {
             Value::Boolean(v) => v == value.as_boolean().unwrap(),
             Value::Number(v) => v == value.as_number().unwrap(),
             Value::String(v) => v == value.as_string().unwrap(),
+            Value::Null => true,
             _ => {
                 return Err(JabroniError::Type(
                     "Cannot compare values of this type".into(),

@@ -137,9 +137,7 @@ impl Jabroni {
             Rule::boolean_literal => {
                 return Value::from_boolean_literal(pair.as_str());
             }
-            Rule::null_literal => {
-                Ok(Value::Null)
-            }
+            Rule::null_literal => Ok(Value::Null),
             Rule::expression => {
                 return self.interpret_expression(pair.into_inner().next().unwrap());
             }
@@ -165,7 +163,9 @@ impl Jabroni {
                     let operator = operator.as_str();
                     let operand = self.interpret_expression(pairs.next().unwrap())?;
                     if operator == "==" {
-                        value.compare(operand)?;
+                        value.compare(operand, false)?;
+                    } else if operator == "===" {
+                        value.compare(operand, true)?;
                     } else if operator == "+" {
                         value.add(operand)?;
                     } else if operator == "-" {

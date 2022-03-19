@@ -10,7 +10,7 @@ double_string_literal = _{"\"" ~ ("\\\"" | (!("\"") ~ ANY))* ~ "\""}
 string_literal = { ( single_string_literal | double_string_literal) }
 
 assignment_operator = { "=" }
-comparison_operator = { "=="  | "!=" }
+comparison_operator = { "===" | "!==" | "==" | "!=" }
 sum_operator = { "+" | "-" }
 product_operator = { "*" | "/" }
 
