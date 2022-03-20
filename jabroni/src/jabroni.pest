@@ -21,7 +21,7 @@ kernel = _{ ident | numeric_literal | null_literal | boolean_literal | string_li
 assignment = { (member_access|ident) ~ assignment_operator ~ prec3}
 prec2 = _{(assignment | prec3) }
 
-ternary = { prec9 ~ "?" ~ prec9 ~ ":" ~ prec9}
+ternary = { prec9 ~ "?" ~ prec9 ~ ":" ~ prec3}
 prec3 = _{(ternary | prec9) }
 
 comparison = { prec10 ~ (comparison_operator ~ prec10)+}
