@@ -6,5 +6,6 @@ pub mod errors;
 mod state;
 mod utils;
 mod value;
+pub use binding::{Binding, BindingMap};
 pub use state::Jabroni;
-pub use value::Value;
+pub use value::{Subroutine, Value};

@@ -1,8 +1,11 @@
 use anyhow::Result;
-use jabroni::Jabroni;
-use std::fs;
-use std::io::{self, Write};
-use std::path::PathBuf;
+use jabroni::{Binding, BindingMap, Jabroni, Subroutine, Value as JabroniValue};
+use std::{
+    fmt::Debug,
+    fs,
+    io::{self, Write},
+    path::PathBuf,
+};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -13,7 +16,8 @@ struct Opt {
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
-    let mut jabroni = Jabroni::new();
+    let mut jabroni = build_jabroni_interpreter()?;
+
     if let Some(file) = opt.file {
         jabroni.run_script(&fs::read_to_string(file)?)?;
     } else {
@@ -32,4 +36,23 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn build_jabroni_interpreter() -> Result<Jabroni> {
+    let mut console = BindingMap::default();
+    console.set(
+        "log".into(),
+        Binding::constant(JabroniValue::Subroutine(Subroutine::new(
+            1,
+            Box::new(|args: &mut [JabroniValue]| {
+                debug_assert!(args.len() == 1);
+                println!("{}", args[0]);
+                Ok(JabroniValue::Null)
+            }),
+        ))),
+    );
+
+    let mut interpreter = Jabroni::new();
+    interpreter.define_constant("console", JabroniValue::Object(console))?;
+    Ok(interpreter)
 }

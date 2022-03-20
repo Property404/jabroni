@@ -11,11 +11,20 @@ use std::{
 
 type Number = i32;
 
-type SubroutineCallback = Rc<Box<dyn Fn(&mut [Value]) -> JabroniResult<Value>>>;
+type SubroutineCallback = Box<dyn Fn(&mut [Value]) -> JabroniResult<Value>>;
 #[derive(Clone)]
 pub struct Subroutine {
     pub number_of_args: u8,
-    pub callback: SubroutineCallback,
+    pub callback: Rc<SubroutineCallback>,
+}
+
+impl Subroutine {
+    pub fn new(number_of_args: u8, callback: SubroutineCallback) -> Self {
+        Self {
+            number_of_args,
+            callback: Rc::new(callback),
+        }
+    }
 }
 
 impl Debug for Subroutine {

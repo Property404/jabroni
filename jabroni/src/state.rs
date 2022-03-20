@@ -5,7 +5,6 @@ use crate::{
     Value,
 };
 use pest::{iterators::Pair, Parser};
-use std::rc::Rc;
 
 #[derive(Parser)]
 #[grammar = "jabroni.pest"]
@@ -235,10 +234,7 @@ impl Jabroni {
 
                     substate.run_script(body.as_str())
                 };
-                let subroutine = Subroutine {
-                    number_of_args: num_args as u8,
-                    callback: Rc::new(Box::new(callback)),
-                };
+                let subroutine = Subroutine::new(num_args as u8, Box::new(callback));
                 self.bindings.set(
                     function_name.as_str().into(),
                     Binding::constant(Value::Subroutine(subroutine)),
@@ -399,10 +395,7 @@ mod tests {
         let mut object = BindingMap::default();
         object.set(
             "bar".into(),
-            Binding::constant(Value::Subroutine(Subroutine {
-                number_of_args: 0,
-                callback: Rc::new(Box::new(bar)),
-            })),
+            Binding::constant(Value::Subroutine(Subroutine::new(0, Box::new(bar)))),
         );
 
         let object = Value::Object(object);
