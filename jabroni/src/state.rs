@@ -114,7 +114,7 @@ impl Jabroni {
                 }
 
                 let callback = &subroutine.callback;
-                callback(&mut args)
+                callback(self.bindings.new_context(), &mut args)
             }
             Rule::ternary => {
                 let mut pair = pair.into_inner();
@@ -213,27 +213,22 @@ impl Jabroni {
                 let num_args = params.len();
 
                 let body = pair.next().unwrap().as_str().to_string();
-                let mut bindings = self.bindings.clone();
-                bindings.push();
-                let callback = move |args: &mut [Value]| -> JabroniResult<Value> {
-                    if args.len() != num_args {
-                        return Err(JabroniError::InvalidArguments(
-                            "Incorrect number of arguments".into(),
-                        ));
-                    }
+                let callback =
+                    move |mut context: BindingMap, args: &mut [Value]| -> JabroniResult<Value> {
+                        if args.len() != num_args {
+                            return Err(JabroniError::InvalidArguments(
+                                "Incorrect number of arguments".into(),
+                            ));
+                        }
 
-                    let mut substate = Jabroni {
-                        bindings: bindings.clone(),
+                        // Copy params/args (WARN: currently pass by value only)
+                        for (param, arg) in params.iter().zip(args.iter_mut()) {
+                            context.set(param.into(), Binding::constant(arg.clone()));
+                        }
+                        let mut substate = Jabroni { bindings: context };
+
+                        substate.run_script(body.as_str())
                     };
-                    // Copy params/args (WARN: currently pass by value only)
-                    for (param, arg) in params.iter().zip(args.iter_mut()) {
-                        substate
-                            .bindings
-                            .set(param.into(), Binding::constant(arg.clone()));
-                    }
-
-                    substate.run_script(body.as_str())
-                };
                 let subroutine = Subroutine::new(num_args as u8, Box::new(callback));
                 self.bindings.set(
                     function_name.as_str().into(),
@@ -387,7 +382,7 @@ mod tests {
 
     #[test]
     fn object_method() {
-        fn bar(_: &mut [Value]) -> JabroniResult<Value> {
+        fn bar(_: BindingMap, _: &mut [Value]) -> JabroniResult<Value> {
             Ok(Value::Number(42))
         }
 
@@ -407,17 +402,11 @@ mod tests {
     #[test]
     fn call_rust_function() {
         let mut state = Jabroni::new();
-        fn foo(_: &mut [Value]) -> JabroniResult<Value> {
+        fn foo(_: BindingMap, _: &mut [Value]) -> JabroniResult<Value> {
             Ok(Value::Number(42))
         }
         state
-            .define_constant(
-                "foo",
-                Value::Subroutine(Subroutine {
-                    number_of_args: 0,
-                    callback: Rc::new(Box::new(foo)),
-                }),
-            )
+            .define_constant("foo", Value::Subroutine(Subroutine::new(0, Box::new(foo))))
             .unwrap();
         assert_eq!(state.run_expression("foo()").unwrap(), 42.into());
     }

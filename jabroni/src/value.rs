@@ -11,7 +11,7 @@ use std::{
 
 type Number = i32;
 
-type SubroutineCallback = Box<dyn Fn(&mut [Value]) -> JabroniResult<Value>>;
+type SubroutineCallback = Box<dyn Fn(BindingMap, &mut [Value]) -> JabroniResult<Value>>;
 #[derive(Clone)]
 pub struct Subroutine {
     pub number_of_args: u8,

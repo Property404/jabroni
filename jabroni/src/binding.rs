@@ -75,8 +75,10 @@ impl Default for BindingMap {
 }
 
 impl BindingMap {
-    pub fn push(&mut self) {
-        self.maps.push(Default::default());
+    pub fn new_context(&self) -> Self {
+        let mut clone = self.clone();
+        clone.maps.push(Default::default());
+        clone
     }
 
     pub fn has_on_top(&self, ident: &str) -> bool {

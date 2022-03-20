@@ -44,7 +44,7 @@ fn build_jabroni_interpreter() -> Result<Jabroni> {
         "log".into(),
         Binding::constant(JabroniValue::Subroutine(Subroutine::new(
             1,
-            Box::new(|args: &mut [JabroniValue]| {
+            Box::new(|_: BindingMap, args: &mut [JabroniValue]| {
                 debug_assert!(args.len() == 1);
                 println!("{}", args[0]);
                 Ok(JabroniValue::Null)
