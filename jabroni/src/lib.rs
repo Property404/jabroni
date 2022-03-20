@@ -1,3 +1,6 @@
+#![warn(missing_docs)]
+//! Type-safe JavaScript-like embedded language
+
 #[macro_use]
 extern crate pest_derive;
 

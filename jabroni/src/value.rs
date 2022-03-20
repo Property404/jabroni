@@ -17,7 +17,7 @@ type SubroutineCallback = Box<dyn Fn(BindingMap, &mut [Value]) -> JabroniResult<
 /// A Jabroni function.
 /// # Example
 /// ```
-/// use jabroni::{Binding, BindingMap, Jabroni, Subroutine, Value as JabroniValue};
+/// use jabroni::{BindingMap, Jabroni, Subroutine, Value as JabroniValue};
 ///
 /// let mut interpreter = Jabroni::new();
 /// interpreter.define_constant(

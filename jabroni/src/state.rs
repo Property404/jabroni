@@ -11,23 +11,28 @@ use pest::{iterators::Pair, Parser};
 struct IdentParser;
 
 #[derive(Default)]
+/// Stateful Jabroni interpreter
 pub struct Jabroni {
     bindings: BindingMap,
 }
 
 impl Jabroni {
+    /// Construct a new instance of [Jabroni]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Define a new constant
     pub fn define_constant(&mut self, ident: &str, value: Value) -> JabroniResult {
         self.define_binding(ident, value, false)
     }
 
+    /// Define a new variable
     pub fn define_variable(&mut self, ident: &str, value: Value) -> JabroniResult {
         self.define_binding(ident, value, true)
     }
 
+    /// Update value of variable
     pub fn update_variable(&mut self, ident: &str, value: Value) -> JabroniResult {
         self.bindings.get_mut(ident)?.set_value(value)?;
 
@@ -45,6 +50,7 @@ impl Jabroni {
         Ok(())
     }
 
+    /// Evaluate a Jabroni expression. This excluded statements
     pub fn run_expression(&mut self, code: &str) -> JabroniResult<Value> {
         let mut pairs = IdentParser::parse(Rule::jabroni_expression, code)
             .map_err(|e| JabroniError::Parse(format!("{}", e)))?;
@@ -52,6 +58,7 @@ impl Jabroni {
         self.interpret_expression(pairs.next().unwrap())
     }
 
+    /// Run a Jabroni script
     pub fn run_script(&mut self, code: &str) -> JabroniResult<Value> {
         let pairs = IdentParser::parse(Rule::jabroni_script, code)
             .map_err(|e| JabroniError::Parse(format!("{}", e)))?;
@@ -113,7 +120,7 @@ impl Jabroni {
                     args.push(self.interpret_expression(arg)?);
                 }
 
-                subroutine.call(self.bindings.new_context(), &mut args)
+                subroutine.call(self.bindings.clone_with_new_scope(), &mut args)
             }
             Rule::ternary => {
                 let mut pair = pair.into_inner();
