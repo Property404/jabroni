@@ -107,13 +107,6 @@ impl Value {
         }
     }
 
-    pub fn assert_same_type(&self, value: &Value) -> JabroniResult {
-        if std::mem::discriminant(self) != std::mem::discriminant(value) {
-            return Err(JabroniError::Type("Type mismatch".into()));
-        }
-        Ok(())
-    }
-
     pub fn add(&mut self, value: Value) -> JabroniResult {
         *self.unwrap_as_number()? += value.unwrap_into_number()?;
         Ok(())
@@ -163,6 +156,29 @@ impl Value {
             Value::Number(v) => v == value.as_number().unwrap(),
             Value::String(v) => v == value.as_string().unwrap(),
             Value::Null => true,
+            _ => {
+                return Err(JabroniError::Type(
+                    "Cannot compare values of this type".into(),
+                ));
+            }
+        };
+        *self = Value::Boolean(comparison);
+        Ok(())
+    }
+
+    pub fn compare_inequality(
+        &mut self,
+        value: Value,
+        comparator: &dyn Fn(Number, Number) -> bool,
+    ) -> JabroniResult {
+        if std::mem::discriminant(self) != std::mem::discriminant(&value) {
+            return Err(JabroniError::Type(
+                "Cannot compare between values of different types. Try using '===' or '!=='".into(),
+            ));
+        }
+
+        let comparison = match self {
+            Value::Number(v) => comparator(*v, *value.as_number().unwrap()),
             _ => {
                 return Err(JabroniError::Type(
                     "Cannot compare values of this type".into(),

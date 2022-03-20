@@ -154,7 +154,7 @@ impl Jabroni {
                 // to compare
                 Ok(Value::Null)
             }
-            Rule::comparison | Rule::sum | Rule::product => {
+            Rule::comparison | Rule::inequality | Rule::sum | Rule::product => {
                 let mut pairs = pair.into_inner();
                 let mut value = self.interpret_expression(pairs.next().unwrap())?;
                 while let Some(operator) = pairs.next() {
@@ -170,6 +170,14 @@ impl Jabroni {
                     } else if operator == "!==" {
                         value.compare(operand, true)?;
                         value.inverse()?;
+                    } else if operator == ">" {
+                        value.compare_inequality(operand, &|a, b| a > b)?;
+                    } else if operator == ">=" {
+                        value.compare_inequality(operand, &|a, b| a >= b)?;
+                    } else if operator == "<" {
+                        value.compare_inequality(operand, &|a, b| a < b)?;
+                    } else if operator == "<=" {
+                        value.compare_inequality(operand, &|a, b| a <= b)?;
                     } else if operator == "+" {
                         value.add(operand)?;
                     } else if operator == "-" {
@@ -279,6 +287,11 @@ mod tests {
         assert_eq!(state.run_expression("8===8").unwrap(), true.into());
         assert_eq!(state.run_expression("null===null").unwrap(), true.into());
         assert_eq!(state.run_expression("null===0").unwrap(), false.into());
+        assert_eq!(state.run_expression("4>3").unwrap(), true.into());
+        assert_eq!(state.run_expression("4>=3").unwrap(), true.into());
+        assert_eq!(state.run_expression("4>=4").unwrap(), true.into());
+        assert_eq!(state.run_expression("4<=4").unwrap(), true.into());
+        assert_eq!(state.run_expression("4<4").unwrap(), false.into());
     }
 
     #[test]

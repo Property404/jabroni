@@ -11,6 +11,7 @@ string_literal = { ( single_string_literal | double_string_literal) }
 
 assignment_operator = { "=" }
 comparison_operator = { "===" | "!==" | "==" | "!=" }
+inequality_operator = { ">=" | "<=" | ">" | "<" }
 sum_operator = { "+" | "-" }
 product_operator = { "*" | "/" }
 
@@ -23,8 +24,11 @@ prec2 = _{(assignment | prec3) }
 ternary = { prec9 ~ "?" ~ prec9 ~ ":" ~ prec9}
 prec3 = _{(ternary | prec9) }
 
-comparison = { prec12 ~ (comparison_operator ~ prec12)+}
-prec9 = _{(comparison | prec12) }
+comparison = { prec10 ~ (comparison_operator ~ prec10)+}
+prec9 = _{(comparison | prec10) }
+
+inequality = { prec12 ~ (inequality_operator ~ prec12)+}
+prec10 = _{(inequality | prec12) }
 
 sum = { prec13 ~ (sum_operator ~ prec13)+}
 prec12 = _{(sum | prec13) }
