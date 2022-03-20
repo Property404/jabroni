@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 structopt = "0.3.26"
 anyhow = "1.0.56"
+rustyline = "9.1.2"
 
 [dependencies.jabroni]
 path = "../jabroni"

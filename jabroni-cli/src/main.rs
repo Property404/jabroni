@@ -1,11 +1,7 @@
 use anyhow::Result;
 use jabroni::{Binding, BindingMap, Jabroni, Subroutine, Value as JabroniValue};
-use std::{
-    fmt::Debug,
-    fs,
-    io::{self, Write},
-    path::PathBuf,
-};
+use rustyline::{error::ReadlineError, Editor};
+use std::{fmt::Debug, fs, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -21,18 +17,29 @@ fn main() -> Result<()> {
     if let Some(file) = opt.file {
         jabroni.run_script(&fs::read_to_string(file)?)?;
     } else {
+        let mut rl = Editor::<()>::new();
         loop {
-            print!("Jabroni> ");
-            io::stdout().flush().unwrap();
-
-            let mut line = String::new();
-            io::stdin()
-                .read_line(&mut line)
-                .expect("Failed to read line");
-            match jabroni.run_expression(line.trim()) {
-                Ok(value) => println!("{}", value),
-                Err(e) => println!("{}", e),
-            };
+            match rl.readline("Jabroni> ") {
+                Ok(line) => {
+                    rl.add_history_entry(line.as_str());
+                    match jabroni.run_expression(line.trim()) {
+                        Ok(value) => println!("{}", value),
+                        Err(e) => println!("{}", e),
+                    };
+                }
+                Err(ReadlineError::Interrupted) => {
+                    println!("<Ctrl-C>");
+                    break;
+                }
+                Err(ReadlineError::Eof) => {
+                    println!("<Ctrl-D>");
+                    break;
+                }
+                Err(err) => {
+                    println!("Error: {:?}", err);
+                    break;
+                }
+            }
         }
     }
     Ok(())
