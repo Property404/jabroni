@@ -228,6 +228,12 @@ impl Jabroni {
                     Binding::constant(Value::Subroutine(subroutine)),
                 );
             }
+            Rule::throw_statement => {
+                return Err(JabroniError::Exception(format!(
+                    "{}",
+                    self.interpret_expression(pair.into_inner().next().unwrap())?
+                )))
+            }
             Rule::return_statement => {
                 return self.interpret_expression(pair.into_inner().next().unwrap());
             }
@@ -433,6 +439,16 @@ mod tests {
         state.run_script("x=0;y=1;x=2;\n").unwrap();
         assert_eq!(state.run_expression("x").unwrap(), 2.into());
         assert_eq!(state.run_expression("y").unwrap(), 1.into());
+    }
+
+    #[test]
+    fn exceptions() {
+        let mut state = Jabroni::new();
+        if let Err(err) = state.run_script("throw 'error';") {
+            assert!(matches!(err, JabroniError::Exception(_)));
+        } else {
+            panic!("Exception not thrown!");
+        }
     }
 
     #[test]

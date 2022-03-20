@@ -18,6 +18,9 @@ pub enum JabroniError {
     /// Defining a variable or constant twice.
     #[error("DoubleDefinitionError: {0}")]
     DoubleDefinition(String),
+    /// Exception thrown in code
+    #[error("Uncaught exception: {0}")]
+    Exception(String),
 }
 
 /// The result type used ubiquitously within this crate.

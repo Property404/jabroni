@@ -45,7 +45,8 @@ function_statement = { "function"~ ident ~ "(" ~ parameter_list ~ ")" ~ block_st
 return_statement = {"return" ~ expression ~ ";"}
 declaration_type = {"const" | "let" }
 declaration_statement = {declaration_type ~ ident ~ "=" ~ expression ~ ";"}
-statement = {function_statement | declaration_statement | block_statement | return_statement | expression ~ ";" }
+throw_statement = {"throw" ~ expression ~ ";"}
+statement = {function_statement | throw_statement | declaration_statement | block_statement | return_statement | expression ~ ";" }
 
 jabroni_expression = _{ SOI ~ expression ~ EOI }
 jabroni_script = _{ SOI ~ (statement*) ~ EOI }
