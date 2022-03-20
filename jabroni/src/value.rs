@@ -14,16 +14,34 @@ type Number = i32;
 type SubroutineCallback = Box<dyn Fn(BindingMap, &mut [Value]) -> JabroniResult<Value>>;
 #[derive(Clone)]
 pub struct Subroutine {
-    pub number_of_args: u8,
-    pub callback: Rc<SubroutineCallback>,
+    number_of_args: Option<usize>,
+    callback: Rc<SubroutineCallback>,
 }
 
 impl Subroutine {
-    pub fn new(number_of_args: u8, callback: SubroutineCallback) -> Self {
+    pub fn new(number_of_args: usize, callback: SubroutineCallback) -> Self {
         Self {
-            number_of_args,
+            number_of_args: Some(number_of_args),
             callback: Rc::new(callback),
         }
+    }
+    pub fn new_variadic(callback: SubroutineCallback) -> Self {
+        Self {
+            number_of_args: None,
+            callback: Rc::new(callback),
+        }
+    }
+
+    pub fn call(&self, context: BindingMap, args: &mut [Value]) -> JabroniResult<Value> {
+        if let Some(number_of_args) = self.number_of_args {
+            if args.len() != number_of_args {
+                return Err(JabroniError::InvalidArguments(
+                    "Incorrect number of arguments".into(),
+                ));
+            }
+        }
+        let callback = self.callback.clone();
+        callback(context, args)
     }
 }
 

@@ -113,8 +113,7 @@ impl Jabroni {
                     args.push(self.interpret_expression(arg)?);
                 }
 
-                let callback = &subroutine.callback;
-                callback(self.bindings.new_context(), &mut args)
+                subroutine.call(self.bindings.new_context(), &mut args)
             }
             Rule::ternary => {
                 let mut pair = pair.into_inner();
@@ -215,12 +214,6 @@ impl Jabroni {
                 let body = pair.next().unwrap().as_str().to_string();
                 let callback =
                     move |mut context: BindingMap, args: &mut [Value]| -> JabroniResult<Value> {
-                        if args.len() != num_args {
-                            return Err(JabroniError::InvalidArguments(
-                                "Incorrect number of arguments".into(),
-                            ));
-                        }
-
                         // Copy params/args (WARN: currently pass by value only)
                         for (param, arg) in params.iter().zip(args.iter_mut()) {
                             context.set(param.into(), Binding::constant(arg.clone()));
@@ -229,7 +222,7 @@ impl Jabroni {
 
                         substate.run_script(body.as_str())
                     };
-                let subroutine = Subroutine::new(num_args as u8, Box::new(callback));
+                let subroutine = Subroutine::new(num_args, Box::new(callback));
                 self.bindings.set(
                     function_name.as_str().into(),
                     Binding::constant(Value::Subroutine(subroutine)),

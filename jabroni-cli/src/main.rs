@@ -42,11 +42,15 @@ fn build_jabroni_interpreter() -> Result<Jabroni> {
     let mut console = BindingMap::default();
     console.set(
         "log".into(),
-        Binding::constant(JabroniValue::Subroutine(Subroutine::new(
-            1,
+        Binding::constant(JabroniValue::Subroutine(Subroutine::new_variadic(
             Box::new(|_: BindingMap, args: &mut [JabroniValue]| {
-                debug_assert!(args.len() == 1);
-                println!("{}", args[0]);
+                for (i, arg) in args.iter().enumerate() {
+                    print!("{}", arg);
+                    if i != args.len() - 1 {
+                        print!(" ");
+                    }
+                }
+                println!();
                 Ok(JabroniValue::Null)
             }),
         ))),
